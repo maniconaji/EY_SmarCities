@@ -1,0 +1,243 @@
+# # Combining ground data and final data into a single dataset.
+# weather_data = combine_two_datasets(df_weather_Bronx, df_weather_Manhattan, naxis=0)
+# # filter the data for the time period of interest
+# mask = (weather_data['datetime'] >= '2021-07-24 15:01:00') & (weather_data['datetime'] <= '2021-07-24 15:59:00')
+# weather_data = weather_data[mask]
+# print("Info:\n", weather_data.info())
+# weather_data.head()
+
+# gdf = gpd.GeoDataFrame(uhi_data, geometry=gpd.points_from_xy(uhi_data.Longitude, uhi_data.Latitude)).reset_index(drop=True)
+# gdf.crs = "EPSG:4326"
+
+# from sklearn.cluster import KMeans
+
+# a = pd.Series(gdf['geometry'].apply(lambda p: p.x))
+# b = pd.Series(gdf['geometry'].apply(lambda p: p.y))
+# X = np.column_stack((a, b))
+
+# kmeans = KMeans(n_clusters=2, init='k-means++', random_state=5, max_iter=400)
+# y_kmeans = kmeans.fit_predict(X)
+# k = pd.DataFrame(y_kmeans, columns=['cluster']).replace({0: 'Bronx', 1: 'Manhattan'})
+# gdf['Place'] = k
+
+# gdf = gdf.merge(weather_data.drop(columns = ["Longitude", "Latitude"]), on=['datetime', 'Place'], how='left', right_index=False, left_index=False)
+# gdf.drop_duplicates(keep='first', inplace = True)
+# gdf.to_file("../data/processed/all_data.shp")
+# gdf
+
+# from sklearn.cluster import KMeans
+
+# a = pd.Series(gdf_val['geometry'].apply(lambda p: p.x))
+# b = pd.Series(gdf_val['geometry'].apply(lambda p: p.y))
+# X = np.column_stack((a, b))
+
+# kmeans = KMeans(n_clusters=2, init='k-means++', random_state=5, max_iter=400)
+# y_kmeans = kmeans.fit_predict(X)
+# k = pd.DataFrame(y_kmeans, columns=['cluster']).replace({1: 'Bronx', 0: 'Manhattan'})
+# gdf_val['Place'] = k
+
+# gdf_val = gdf_val.merge(weather_data_mean, on=['Place'], how='left', right_index=False, left_index=False)
+# gdf_val.drop_duplicates(keep='first', inplace = True)
+# gdf_val.to_file("../data/validation/all_data.shp")
+
+# gdf_val.plot(column='Place', legend=True, figsize=(10, 10))
+
+
+
+
+# # Functions
+# # Combine two datasets vertically (along columns) using pandas concat function.
+# def combine_two_datasets(dataset1,dataset2,naxis):
+#     '''
+#     Returns a  vertically concatenated dataset.
+#     Attributes:
+#     dataset1 - Dataset 1 to be combined 
+#     dataset2 - Dataset 2 to be combined
+#     '''
+    
+#     data = pd.concat([dataset1,dataset2], axis=naxis)
+#     return data
+
+# # correct datum format
+# def datum_format_correct(df, col_name='datetime'):
+    
+#     return df
+
+# # Extracts satellite band values from a GeoTIFF based on coordinates from a csv file and returns them in a DataFrame.
+# def map_satellite_data_sentinel(path_tiff, path_csv, path_kml, path_result):
+#     # 1. Load the GeoTIFF data
+#     raster = rxr.open_rasterio(path_tiff)
+#     # 2. Read the Excel file using pandas
+#     if isinstance(path_csv, str):
+#         df = pd.read_csv(path_csv, index_col=None)
+#     else:
+#         df = path_csv
+#     # 3. Extract the coordinates from GeoTIFF data
+#     latitudes, longitudes = df['Latitude'].values, df['Longitude'].values
+#     # 4. Read the KML file using geopandas
+#     gdf = gpd.read_file(path_kml, driver='KML')
+#     masked_raster = raster.rio.clip(gdf.geometry, gdf.crs, invert=True)
+
+#     # 5. Iterate over the latitudes and longitudes, and extract the corresponding band values
+#     if os.path.exists(result_path):
+#         df = pd.read_csv(csv_path, index_col=None)
+#     else:
+#         # 4. Iterate over the latitudes and longitudes, and extract the corresponding band values
+#         Band_values = {}
+#         bands_sentinel  = ["B01", "B02", "B03", "B04", "B05", "B06", "B07", "B08", "B8A", "B09", "B11", "B12"]
+#         # Assuming the correct dimensions are 'y' and 'x' (replace these with actual names from data.coords)
+#         for i, text_band in enumerate(bands_sentinel):
+#             Band_values_all = []
+#             for lat, lon in tqdm(zip(latitudes, longitudes), total=len(latitudes), desc="Mapping values "+text_band):
+#                 Band_value_point = data.sel(x=lon, y=lat,  band=i+1, method="nearest").values
+#                 Band_values_all.append(Band_value_point)
+#             Band_values[text_band] = Band_values_all
+#         # Create a DataFrame to store the band values
+#         result = pd.DataFrame.from_dict(Band_values).astype(np.float16)
+#         result["NDVI"]      = (result["B08"] - result["B04"]) / (result["B08"] + result["B04"]).replace([np.inf, -np.inf], np.nan)
+#         result["NDBI"]      = (result["B11"] - result["B08"]) / (result["B11"] + result["B08"]).replace([np.inf, -np.inf], np.nan)
+#         result["NDWI"]      = (result["B03"] - result["B08"]) / (result["B03"] + result["B08"]).replace([np.inf, -np.inf], np.nan)  
+#         result["SWIR_Diff"] = (result["B11"] - result["B12"]).replace([np.inf, -np.inf], np.nan)    # Diferencia SWIR
+#         df = datum_format_correct(pd.concat([df, result], axis = 1))
+#         df[col_name] = pd.to_datetime(df[col_name], format='%d-%m-%Y %H:%M')
+#         if "UHI Index" in df.columns:
+#             df.astype({"UHI Index": np.float16}).to_csv(result_path, index=False)
+#         else:
+#             df.to_csv(result_path, index=False)
+#     return df
+
+# def map_satellite_data_landsat(tiff_path, csv_path, result_path):
+#     # 1. Load the GeoTIFF data
+#     data = rxr.open_rasterio(tiff_path)
+#     tiff_crs = data.rio.crs
+
+#     # 2. Read the Excel file using pandas
+#     print(isinstance(csv_path, str))
+#     if isinstance(csv_path, str):
+#         df = pd.read_csv(csv_path, index_col=None)
+#     else:
+#         df = csv_path
+#     # print(df.info())
+#     latitudes = df['Latitude'].values
+#     longitudes = df['Longitude'].values
+
+#     # 3. Convert lat/long to the GeoTIFF's CRS
+#     # Create a Proj object for EPSG:4326 (WGS84 - lat/long) and the GeoTIFF's CRS
+#     proj_wgs84 = Proj(init='epsg:4326')  # EPSG:4326 is the common lat/long CRS
+#     proj_tiff = Proj(tiff_crs)
+    
+#     # Create a transformer object
+#     transformer = Transformer.from_proj(proj_wgs84, proj_tiff)
+#     if os.path.exists(result_path):
+#         df = pd.read_csv(csv_path, index_col=None)
+#     else:
+#         latitudes   = df['Latitude'].values
+#         longitudes  = df['Longitude'].values
+#         Band_values_all = []
+#         for lat, lon in tqdm(zip(latitudes, longitudes), total=len(latitudes), desc="Mapping values LST"):
+#             Band_value_point = data.sel(x=lon, y=lat,  band=1, method="nearest").values
+#             Band_values_all.append(Band_value_point)
+#         result = pd.Series(Band_values_all, name = "LST").astype(np.float16)
+#         df = datum_format_correct(pd.concat([df, result], axis = 1))
+#         if "UHI Index" in df.columns:
+#             df.astype({"UHI Index": np.float16}).to_csv(result_path, index=False)
+#         else:
+#             df.to_csv(result_path, index=False)
+#     return df
+
+# def open_weather_dataxlsx(path_file_weather, sheet_name, latitude, longitude):
+#     # Read and manipulate the data
+#     df              = pd.read_excel(path_file_weather, sheet_name=sheet_name)
+#     df.columns      = ['datetime', 'air_temp', 'HR', 'wind_speed', 'wind_dir', 'solar_flux']
+#     df["Latitude"]  = latitude
+#     df["Longitude"] = longitude
+#     df['datetime']  = pd.to_datetime(df['datetime'], format='%Y-%m-%d %H:%M:%S EDT')
+#     # Create a sequence of dates
+#     dates = pd.date_range(
+#         start   = df['datetime'].min(),
+#         end     = df['datetime'].max(), 
+#         freq='min')
+#     # Create a pandas Series with these dates
+#     s = pd.Series(dates)
+#     df              = df.merge(s.rename('datetime'), how='right', on='datetime').set_index("datetime").interpolate(method='time')
+#     df["Place"]     = sheet_name
+#     return df
+
+# X_val = pd.DataFrame(ct_final.transform(validation_data[X.columns]), columns = X.columns)
+# y_val = validation_data["UHI Index"]
+
+# final_predictions = final_model.predict(X_val)
+# final_prediction_series = pd.Series(final_predictions)
+
+# submission_df = pd.DataFrame({'Longitude':validation_data['Longitude'].values, 'Latitude':validation_data['Latitude'].values, 'UHI Index':final_prediction_series.values})
+# submission_df.to_csv("../data/submission.csv",index = False)
+# submission_df.head()
+
+# xgb_param_grid = {
+#     "n_estimators": [100, 300, 500],  # Number of trees
+#     "max_depth": [3, 6, 9],  # Tree depth
+#     "learning_rate": [0.01, 0.1, 0.3],  # Step size shrinkage
+#     "subsample": [0.6, 0.8, 1.0],  # Fraction of training data per tree
+#     "colsample_bytree": [0.6, 0.8, 1.0],  # Features per tree
+#     "gamma": [0, 0.1, 0.2],  # Minimum loss reduction
+#     "reg_lambda": [0, 1, 10],  # L2 regularization
+#     "reg_alpha": [0, 0.1, 1],  # L1 regularization
+# }
+
+# Define the hyperparameter grid
+# rf_param_grid = {
+    # 'n_estimators': [650, 700, 750, 800],
+    # 'max_depth': [None, 1, 3, 7],
+    # 'min_samples_split': [2, 5, 10],
+    # 'min_samples_leaf': [1, 2, 4]
+# }
+# Create an instance of the XGBRegressor
+# model = RandomForestRegressor(random_state=42, max_depth=None)
+# model = xgb.XGBRFRegressor(random_state=42)
+
+# # Create an instance of the KFold class
+# kf = KFold(n_splits=10, random_state=42, shuffle=True)
+
+# # Define the grid search
+# # grid_search = GridSearchCV(model, rf_param_grid , cv=kf, scoring='r2')
+
+# # Fitting the model 
+# grid_search.fit(X_train, y_train)
+  
+# # Predict the model 
+# # Print the best set of hyperparameters and the corresponding score
+# print("Best set of hyperparameters: ", grid_search.best_params_)
+# print("Best score: ", grid_search.best_score_)
+
+# #Reading the coordinates for the submission
+# test_file = pd.read_csv('../data/validation/Submission_template_UHI2025-v2.csv')
+# test_file.head()
+
+# # Mapping satellite data with training data.
+
+# path_save_file  = '../data/validation/validation_data.csv'
+# val_data        = map_satellite_data(tiff_path, '../data/validation/Submission_template_UHI2025-v2.csv', path_save_file)
+
+# # Calculate NDVI (Normalized Difference Vegetation Index) and handle division by zero by replacing infinities with NaN.
+# val_data['NDVI'] = (val_data['B08'] - val_data['B04']) / (val_data['B08'] + val_data['B04'])
+# val_data['NDVI'] = val_data['NDVI'].replace([np.inf, -np.inf], np.nan) 
+
+# # Calculate NDBI (Normalized Difference Buildup Index) and handle division by zero by replacing infinities with NaN.
+# val_data['NDBI'] = (val_data.B11-val_data.B08)/(val_data.B11+val_data.B08)
+# val_data['NDBI'] = val_data['NDBI'].replace([np.inf, -np.inf], np.nan)
+
+# # Calculate NDWI (Normalized Difference Water Index) and handle division by zero by replacing infinities with NaN.
+# val_data['NDWI'] = (val_data.B03-val_data.B08)/(final_data.B03+val_data.B08)
+# val_data['NDWI'] = val_data['NDWI'].replace([np.inf, -np.inf], np.nan)
+
+# val_data = combine_two_datasets(test_file,val_data, naxis=1)
+# val_data.head()
+
+# gdf_val = gpd.GeoDataFrame(val_data, geometry=gpd.points_from_xy(val_data.Longitude, val_data.Latitude)).reset_index(drop=True)
+# gdf_val.crs = "EPSG:4326"
+# gdf_val.geometry.plot()
+
+# gdf_val.columns
+
+# weather_data_mean = weather_data.drop(columns = ["Longitude", "Latitude", "datetime"]).groupby('Place').median().reset_index()
+# weather_data_mean
