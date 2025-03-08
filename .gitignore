@@ -2,7 +2,6 @@
 docs/
 notebooks/from_ey
 notebooks/catboost_info
-data/raw
 data/results
 
 # Files
