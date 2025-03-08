@@ -7,4 +7,3 @@ data/results
 # Files
 *.ipynb_checkpoints
 *schedule.xlsx
-*.tiff
